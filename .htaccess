@@ -1,0 +1,6 @@
+# Make browsers re-check the data file so dashboard changes show up straight away.
+<IfModule mod_headers.c>
+  <Files "data.js">
+    Header set Cache-Control "no-cache"
+  </Files>
+</IfModule>

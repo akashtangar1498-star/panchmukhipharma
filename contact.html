@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contact Us - Panchmukhi Pharma</title>
+<meta name="description" content="Send a product enquiry to Panchmukhi Pharma by email, phone or WhatsApp.">
+<link rel="canonical" href="https://www.panchmukhipharma.com/contact.html">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<meta property="og:image" content="https://www.panchmukhipharma.com/assets/logo.jpg">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="contact">
+<header id="site-header"></header>
+
+<main>
+  <div class="page-head"><div class="wrap"><h1>Contact Us</h1><p>Send your requirement and we will reply with a quotation</p></div></div>
+  <section>
+    <div class="wrap two-col">
+      <form class="card form" id="enquiry">
+        <label>Your name *<input name="name" required autocomplete="name"></label>
+        <label>Company<input name="company" autocomplete="organization"></label>
+        <label>Country *<input name="country" required autocomplete="country-name"></label>
+        <label>Email *<input name="email" type="email" required autocomplete="email"></label>
+        <label>Phone<input name="phone" type="tel" autocomplete="tel"></label>
+        <label>Quantity<input name="quantity" placeholder="e.g. 500 boxes"></label>
+        <label class="full">Product<input name="product" placeholder="Product name"></label>
+        <label class="full">Message<textarea name="message" rows="4"></textarea></label>
+        <div class="full actions">
+          <button class="btn btn-primary" type="submit">Send by Email</button>
+          <button class="btn btn-wa" type="button" id="wa-btn">Send on WhatsApp</button>
+        </div>
+        <p class="full muted">The form opens your email app (or WhatsApp) with the enquiry filled in.</p>
+      </form>
+      <div>
+        <h2>Reach us directly</h2>
+        <table class="facts"><tbody id="contact-details"></tbody></table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="site-footer"></footer>
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
