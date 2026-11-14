@@ -14,7 +14,7 @@ window.SITE = {
   "established": "",
   "nature": "Exporter, Wholesaler, Distributor",
   "legalStatus": "",
-  "contactPerson": "",
+  "contactPerson": "Tejas",
   "markets": [],
   "payment": [
    "Bank Transfer",
