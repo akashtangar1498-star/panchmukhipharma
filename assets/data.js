@@ -6086,5 +6086,6 @@ window.SITE = {
    "manufacturer": "",
    "rx": true
   }
- ]
+ ],
+ "testimonials": []
 };
