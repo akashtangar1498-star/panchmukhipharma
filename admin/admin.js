@@ -217,11 +217,7 @@
   $("save").addEventListener("click", async function () {
     if (!D.company.name) { alert("Business name cannot be empty."); return; }
     if (!online) {
-      var blob = new Blob(["window.SITE = " + JSON.stringify(D, null, 1) + ";\n"], { type: "text/javascript" });
-      var a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "data.js";
-      a.click();
+      download("data.js", "window.SITE = " + JSON.stringify(D, null, 1) + ";\n");
       setDirty(false, "Downloaded data.js. Upload it to the assets folder to publish.");
       return;
     }
@@ -241,24 +237,70 @@
     $("login").hidden = true;
     $("app").hidden = false;
     $("offline").hidden = online;
-    $("logout").hidden = !online;
-    if (!online) $("save").textContent = "Save (download file)";
+    $("logout").hidden = !online && !window.ADMIN_LOCK;
+    if (!online) {
+      $("save").textContent = "Save (download file)";
+      $("set-pw").textContent = window.ADMIN_LOCK ? "Change dashboard password" : "Set a dashboard password";
+    }
     refreshCatSelects(); renderProducts(); renderCats(); renderCompany(); renderReviews();
   }
-  function showLogin(needsSetup) {
+  function showLogin(needsSetup, msg) {
     setupMode = needsSetup;
     $("login").hidden = false;
+    $("login-err").textContent = "";
     $("pw2-wrap").hidden = !needsSetup;
     $("pw").autocomplete = needsSetup ? "new-password" : "current-password";
     $("login-btn").textContent = needsSetup ? "Create password" : "Log in";
-    $("login-msg").textContent = needsSetup
-      ? "First visit: choose a dashboard password (at least 8 characters)."
+    $("login-msg").textContent = msg || (needsSetup)
+      ? msg || "First visit: choose a dashboard password (at least 8 characters)."
       : "Enter your dashboard password.";
   }
+  /* Password lock for hosting without PHP (e.g. GitHub Pages). The password is checked in the browser
+     against a salted hash kept in admin/lock.js; the password itself is never stored or sent anywhere. */
+  function hex(bytes) { return [].map.call(bytes, function (b) { return ("0" + b.toString(16)).slice(-2); }).join(""); }
+  async function derive(pw, saltHex) {
+    var salt = new Uint8Array(saltHex.match(/../g).map(function (h) { return parseInt(h, 16); }));
+    var key = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveBits"]);
+    var bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: salt, iterations: 250000 }, key, 256);
+    return hex(new Uint8Array(bits));
+  }
+  function download(name, text) {
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
+    a.download = name;
+    a.click();
+  }
+  function remember(hash) { try { sessionStorage.setItem("pm_unlocked", hash); } catch (err) {} }
+  function unlocked(hash) { try { return sessionStorage.getItem("pm_unlocked") === hash; } catch (err) { return false; } }
+
+  $("set-pw").addEventListener("click", function () {
+    if (dirty && !confirm("Save your changes first, or they will be lost. Continue anyway?")) return;
+    $("app").hidden = true;
+    showLogin(true, "Choose a dashboard password (at least 8 characters). A file named lock.js will download; upload it into the admin folder to switch the lock on.");
+  });
+
   $("login-form").addEventListener("submit", async function (e) {
     e.preventDefault();
     $("login-err").textContent = "";
     if (setupMode && $("pw").value !== $("pw2").value) { $("login-err").textContent = "The two passwords do not match."; return; }
+    if (!online) {
+      try {
+        var L = window.ADMIN_LOCK;
+        if (setupMode) {
+          var salt = hex(crypto.getRandomValues(new Uint8Array(16)));
+          L = window.ADMIN_LOCK = { salt: salt, hash: await derive($("pw").value, salt) };
+          download("lock.js", "window.ADMIN_LOCK = " + JSON.stringify(L) + ";\n");
+          alert("lock.js has been downloaded.\n\nUpload it into the admin folder of your site. Once it is live, this dashboard will ask for the password.");
+        } else if ((await derive($("pw").value, L.salt)) !== L.hash) {
+          $("login-err").textContent = "Wrong password.";
+          return;
+        }
+        remember(L.hash);
+        $("pw").value = $("pw2").value = "";
+        showApp();
+      } catch (err) { $("login-err").textContent = "This browser cannot check the password. Use a current Chrome, Edge or Firefox over https."; }
+      return;
+    }
     try {
       await call(setupMode ? "setup" : "login", { password: $("pw").value });
       $("pw").value = $("pw2").value = "";
@@ -268,7 +310,8 @@
   $("logout").addEventListener("click", async function () {
     if (dirty && !confirm("You have unsaved changes. Log out anyway?")) return;
     dirty = false;
-    try { await call("logout"); } catch (err) {}
+    if (online) { try { await call("logout"); } catch (err) {} }
+    else { try { sessionStorage.removeItem("pm_unlocked"); } catch (err) {} }
     location.reload();
   });
 
@@ -280,7 +323,11 @@
       if (s.loggedIn) showApp(); else showLogin(!s.setup);
     } catch (err) {
       if (err.api) { online = true; showLogin(false); $("login-err").textContent = err.message; }
-      else showApp();                 // no PHP on this server: edit and download instead
+      else {                          // no PHP on this server: edit and download instead
+        var L = window.ADMIN_LOCK;
+        if (L && L.salt && L.hash && !unlocked(L.hash)) showLogin(false);
+        else showApp();
+      }
     }
   })();
 })();
