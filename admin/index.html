@@ -35,11 +35,14 @@
   </header>
 
   <div class="wrap">
-    <p class="notice" id="offline" hidden>
-      This server is not running the save service (PHP), so <strong>Save</strong> downloads a file named
-      <code>data.js</code>. Upload it into the site's <code>assets</code> folder, replacing the old one, to publish your changes.
-      <button class="btn btn-small btn-light" id="set-pw" type="button">Set a dashboard password</button>
-    </p>
+    <div class="notice" id="offline" hidden>
+      <span id="mode-text"></span>
+      <div class="notice-actions">
+        <button class="btn btn-small btn-primary" id="gh-connect" type="button">Connect GitHub</button>
+        <button class="btn btn-small btn-light" id="gh-disconnect" type="button" hidden>Disconnect GitHub</button>
+        <button class="btn btn-small btn-light" id="set-pw" type="button">Set a dashboard password</button>
+      </div>
+    </div>
 
     <nav class="tabs" id="tabs">
       <button data-tab="products" class="active">Products</button>
@@ -136,6 +139,21 @@
     <div class="full actions">
       <button class="btn btn-primary" type="submit">Done</button>
       <button class="btn btn-light" type="button" id="r-cancel">Cancel</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="gh-dialog">
+  <form class="form" id="gh-form">
+    <h2 class="full">Connect GitHub</h2>
+    <p class="full muted">Paste a GitHub access token so Save can publish directly. Create one at GitHub &rarr; Settings &rarr; Developer settings &rarr; Personal access tokens &rarr; Fine-grained tokens, with access to <strong>only this repository</strong> and the permission <strong>Contents: Read and write</strong>. The token is kept only in this browser on this device.</p>
+    <label>Repository<input name="repo" required placeholder="username/repository"></label>
+    <label>Branch<input name="branch" required value="main"></label>
+    <label class="full">Access token<input name="token" type="password" required autocomplete="off" placeholder="github_pat_..."></label>
+    <p class="full error" id="gh-err"></p>
+    <div class="full actions">
+      <button class="btn btn-primary" type="submit">Connect</button>
+      <button class="btn btn-light" type="button" id="gh-cancel">Cancel</button>
     </div>
   </form>
 </dialog>

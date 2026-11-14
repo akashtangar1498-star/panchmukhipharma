@@ -19,6 +19,58 @@
     if (!r.ok) { var e = new Error(j.error || "Request failed"); e.api = true; throw e; }
     return j;
   }
+  /* ---------------- direct publishing to GitHub (for GitHub Pages hosting) ----------------
+     The access token is typed in by the site owner and kept only in this browser (localStorage).
+     With it, Save commits assets/data.js straight to the repository and the site rebuilds itself. */
+  var GH_DEFAULT = { repo: "akashtangar1498-star/panchmukhipharma", branch: "main" };
+  var gh = null;
+  try { gh = JSON.parse(localStorage.getItem("pm_gh")); } catch (err) {}
+  if (!gh || !gh.token || !gh.repo) gh = null;
+
+  function ghFetch(cfg, path, opts) {
+    opts = opts || {};
+    opts.cache = "no-store";
+    opts.headers = Object.assign({
+      "Accept": "application/vnd.github+json", "Authorization": "Bearer " + cfg.token, "X-GitHub-Api-Version": "2022-11-28"
+    }, opts.headers || {});
+    return fetch("https://api.github.com/repos/" + cfg.repo + (path ? "/" + path : ""), opts);
+  }
+  function ghError(r) {
+    var e = new Error(
+      r.status === 401 ? "GitHub rejected the access token. Disconnect and connect again with a new token." :
+      r.status === 403 || r.status === 404 ? "The token cannot write to this repository. It needs 'Contents: Read and write' for " + ((gh || {}).repo || "the repository") + "." :
+      "GitHub returned an error (" + r.status + "). Try again in a moment.");
+    e.gh = true;
+    return e;
+  }
+  function b64(text) {
+    var bytes = new TextEncoder().encode(text), s = "";
+    for (var i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(s);
+  }
+  async function ghPut(file, text, message) {
+    for (var attempt = 0; attempt < 2; attempt++) {
+      var sha = null, r = await ghFetch(gh, "contents/" + file + "?ref=" + encodeURIComponent(gh.branch), { headers: { "Accept": "application/vnd.github.object+json" } });
+      if (r.ok) sha = (await r.json()).sha;
+      else if (r.status !== 404) throw ghError(r);
+      var body = { message: message, content: b64(text), branch: gh.branch };
+      if (sha) body.sha = sha;
+      r = await ghFetch(gh, "contents/" + file, { method: "PUT", body: JSON.stringify(body) });
+      if (r.ok) return;
+      if (r.status !== 409 || attempt) throw ghError(r);     // 409: file changed meanwhile, retry once
+    }
+  }
+  // Load the newest saved data from the repository, so edits never start from a stale cached page.
+  async function ghLoad() {
+    var r = await ghFetch(gh, "contents/assets/data.js?ref=" + encodeURIComponent(gh.branch), { headers: { "Accept": "application/vnd.github.raw+json" } });
+    if (!r.ok) throw ghError(r);
+    var t = await r.text(), fresh = JSON.parse(t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1));
+    if (fresh && fresh.company && Array.isArray(fresh.products) && Array.isArray(fresh.categories)) {
+      D = fresh;
+      if (!Array.isArray(D.testimonials)) D.testimonials = [];
+    }
+  }
+
   function setDirty(v, msg) {
     dirty = v;
     $("save").disabled = !v;
@@ -216,6 +268,17 @@
 
   $("save").addEventListener("click", async function () {
     if (!D.company.name) { alert("Business name cannot be empty."); return; }
+    if (!online && gh) {
+      $("save").disabled = true;
+      $("status").textContent = "Publishing...";
+      try {
+        await ghPut("assets/data.js", "window.SITE = " + JSON.stringify(D, null, 1) + ";\n", "Update site content from dashboard");
+        setDirty(false, "Published at " + new Date().toLocaleTimeString() + ". The live site updates in a few minutes.");
+      } catch (err) {
+        setDirty(true, "Publish failed: " + (err.gh ? err.message : "no connection to GitHub. Check your internet and try again."));
+      }
+      return;
+    }
     if (!online) {
       download("data.js", "window.SITE = " + JSON.stringify(D, null, 1) + ";\n");
       setDirty(false, "Downloaded data.js. Upload it to the assets folder to publish.");
@@ -238,12 +301,62 @@
     $("app").hidden = false;
     $("offline").hidden = online;
     $("logout").hidden = !online && !window.ADMIN_LOCK;
-    if (!online) {
-      $("save").textContent = "Save (download file)";
-      $("set-pw").textContent = window.ADMIN_LOCK ? "Change dashboard password" : "Set a dashboard password";
-    }
-    refreshCatSelects(); renderProducts(); renderCats(); renderCompany(); renderReviews();
+    renderMode();
+    renderAll();
   }
+  function renderAll() { refreshCatSelects(); renderProducts(); renderCats(); renderCompany(); renderReviews(); }
+  function renderMode() {
+    if (online) return;
+    $("save").textContent = gh ? "Save & publish" : "Save (download file)";
+    $("set-pw").textContent = window.ADMIN_LOCK ? "Change dashboard password" : "Set a dashboard password";
+    $("gh-connect").hidden = !!gh;
+    $("gh-disconnect").hidden = !gh;
+    $("mode-text").textContent = gh
+      ? "Connected to GitHub (" + gh.repo + "). Save publishes your changes directly; the live site updates in a few minutes."
+      : "Not connected to GitHub yet, so Save downloads a file named data.js that has to be uploaded into the assets folder by hand. Connect GitHub once to publish with one click.";
+  }
+  // Opens the dashboard on hosting without PHP: pull the newest data from GitHub first when connected.
+  async function enterApp() {
+    var note = "";
+    if (gh) { try { await ghLoad(); } catch (err) { note = err.gh ? err.message : "Could not reach GitHub; showing the last published copy."; } }
+    showApp();
+    if (note) $("status").textContent = note;
+  }
+
+  $("gh-connect").addEventListener("click", function () {
+    var f = $("gh-form");
+    f.repo.value = GH_DEFAULT.repo;
+    f.branch.value = GH_DEFAULT.branch;
+    f.token.value = "";
+    $("gh-err").textContent = "";
+    $("gh-dialog").showModal();
+  });
+  $("gh-cancel").addEventListener("click", function () { $("gh-dialog").close(); });
+  $("gh-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var f = e.target, cfg = { repo: f.repo.value.trim().replace(/^https:\/\/github\.com\//, "").replace(/\/+$/, ""), branch: f.branch.value.trim() || "main", token: f.token.value.trim() };
+    $("gh-err").textContent = "Checking...";
+    try {
+      var r = await ghFetch(cfg, "");
+      if (r.status === 401) { $("gh-err").textContent = "GitHub did not accept this token. Copy it again, with no spaces."; return; }
+      if (!r.ok) { $("gh-err").textContent = "This token cannot see the repository " + cfg.repo + ". Check the repository name and the token's repository access."; return; }
+      var info = await r.json();
+      if (info.permissions && info.permissions.push === false) { $("gh-err").textContent = "This token can read the repository but not write to it. Give it 'Contents: Read and write'."; return; }
+    } catch (err) { $("gh-err").textContent = "Could not reach GitHub. Check your internet connection."; return; }
+    gh = cfg;
+    try { localStorage.setItem("pm_gh", JSON.stringify(gh)); } catch (err) {}
+    f.token.value = "";
+    $("gh-dialog").close();
+    if (!dirty) { try { await ghLoad(); renderAll(); } catch (err) {} }
+    renderMode();
+    $("status").textContent = "Connected to GitHub.";
+  });
+  $("gh-disconnect").addEventListener("click", function () {
+    if (!confirm("Disconnect GitHub on this device? The access token will be removed from this browser.")) return;
+    gh = null;
+    try { localStorage.removeItem("pm_gh"); } catch (err) {}
+    renderMode();
+  });
   function showLogin(needsSetup, msg) {
     setupMode = needsSetup;
     $("login").hidden = false;
@@ -276,7 +389,9 @@
   $("set-pw").addEventListener("click", function () {
     if (dirty && !confirm("Save your changes first, or they will be lost. Continue anyway?")) return;
     $("app").hidden = true;
-    showLogin(true, "Choose a dashboard password (at least 8 characters). A file named lock.js will download; upload it into the admin folder to switch the lock on.");
+    showLogin(true, gh
+      ? "Choose a dashboard password (at least 8 characters). It is saved to GitHub and becomes active in a few minutes."
+      : "Choose a dashboard password (at least 8 characters). A file named lock.js will download; upload it into the admin folder to switch the lock on.");
   });
 
   $("login-form").addEventListener("submit", async function (e) {
@@ -289,16 +404,23 @@
         if (setupMode) {
           var salt = hex(crypto.getRandomValues(new Uint8Array(16)));
           L = window.ADMIN_LOCK = { salt: salt, hash: await derive($("pw").value, salt) };
-          download("lock.js", "window.ADMIN_LOCK = " + JSON.stringify(L) + ";\n");
-          alert("lock.js has been downloaded.\n\nUpload it into the admin folder of your site. Once it is live, this dashboard will ask for the password.");
+          var lockText = "window.ADMIN_LOCK = " + JSON.stringify(L) + ";\n";
+          if (gh) {
+            await ghPut("admin/lock.js", lockText, "Update dashboard password lock");
+            alert("Password saved to GitHub.\n\nIn a few minutes this dashboard will ask for it on every visit.");
+          } else {
+            download("lock.js", lockText);
+            alert("lock.js has been downloaded.\n\nUpload it into the admin folder of your site. Once it is live, this dashboard will ask for the password.");
+          }
         } else if ((await derive($("pw").value, L.salt)) !== L.hash) {
           $("login-err").textContent = "Wrong password.";
           return;
         }
+        var wasSetup = setupMode;
         remember(L.hash);
         $("pw").value = $("pw2").value = "";
-        showApp();
-      } catch (err) { $("login-err").textContent = "This browser cannot check the password. Use a current Chrome, Edge or Firefox over https."; }
+        if (wasSetup) showApp(); else await enterApp();
+      } catch (err) { $("login-err").textContent = err.gh ? err.message : "This browser cannot check the password. Use a current Chrome, Edge or Firefox over https."; }
       return;
     }
     try {
@@ -326,7 +448,7 @@
       else {                          // no PHP on this server: edit and download instead
         var L = window.ADMIN_LOCK;
         if (L && L.salt && L.hash && !unlocked(L.hash)) showLogin(false);
-        else showApp();
+        else await enterApp();
       }
     }
   })();

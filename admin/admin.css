@@ -14,6 +14,7 @@
 .btn-danger { background: #fff; color: #b3261e; border: 1px solid #e3b5b1; }
 
 .notice { background: #fff6dd; border: 1px solid #ecd28a; border-radius: 10px; padding: 12px 16px; margin: 18px 0 0; }
+.notice-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .tabs { overflow-x: auto; white-space: nowrap; display: flex; gap: 4px; margin: 20px 0 0; border-bottom: 2px solid var(--line); }
 .tabs button { background: none; border: 0; padding: 10px 18px; font: inherit; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; }
 .tabs button.active { color: var(--teal); border-color: var(--teal); }
