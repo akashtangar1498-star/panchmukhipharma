@@ -1,0 +1,1 @@
+window.ADMIN_LOCK = {"salt":"3dac94f831d9ce571ab148e56e021a40","hash":"1e9620b875362d80e048ce96597fb7d33e8944af5fac25e5a504487e16edaa15"};
