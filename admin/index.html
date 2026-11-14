@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Dashboard - Panchmukhi Pharma</title>
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<div id="login" class="login" hidden>
+  <form class="card" id="login-form">
+    <h1>Dashboard</h1>
+    <p class="muted" id="login-msg"></p>
+    <label>Password<input type="password" id="pw" required minlength="8" autocomplete="current-password"></label>
+    <label id="pw2-wrap" hidden>Repeat password<input type="password" id="pw2" minlength="8" autocomplete="new-password"></label>
+    <p class="error" id="login-err"></p>
+    <button class="btn btn-primary" id="login-btn">Log in</button>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <header class="bar">
+    <div class="wrap bar-in">
+      <strong>Website Dashboard</strong>
+      <span class="muted" id="status"></span>
+      <span class="spacer"></span>
+      <a class="btn btn-light" href="../index.html" target="_blank" rel="noopener">View site</a>
+      <button class="btn btn-accent" id="save" disabled>Save to website</button>
+      <button class="btn btn-light" id="logout" hidden>Log out</button>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <p class="notice" id="offline" hidden>
+      This server is not running the save service (PHP), so <strong>Save</strong> downloads a file named
+      <code>data.js</code>. Upload it into the site's <code>assets</code> folder, replacing the old one, to publish your changes.
+    </p>
+
+    <nav class="tabs" id="tabs">
+      <button data-tab="products" class="active">Products</button>
+      <button data-tab="categories">Categories</button>
+      <button data-tab="reviews">Reviews</button>
+      <button data-tab="company">Company details</button>
+    </nav>
+
+    <section id="tab-reviews" hidden>
+      <div class="tools">
+        <span class="muted" id="r-count"></span>
+        <span class="spacer"></span>
+        <button class="btn btn-primary" id="r-add">+ Add review</button>
+      </div>
+      <div class="card table-wrap">
+        <table class="list">
+          <thead><tr><th>Customer</th><th>Rating</th><th>Review</th><th></th></tr></thead>
+          <tbody id="r-rows"></tbody>
+        </table>
+      </div>
+      <p class="muted">Add only reviews that real customers gave you, in their words and with their permission. The reviews section appears on the home page once there is at least one.</p>
+    </section>
+
+    <section id="tab-products">
+      <div class="tools">
+        <input type="search" id="p-search" placeholder="Search products..." aria-label="Search products">
+        <select id="p-cat" aria-label="Filter by category"></select>
+        <span class="muted" id="p-count"></span>
+        <span class="spacer"></span>
+        <button class="btn btn-primary" id="p-add">+ Add product</button>
+      </div>
+      <div class="card table-wrap">
+        <table class="list">
+          <thead><tr><th>Product</th><th>Category</th><th>Price</th><th></th></tr></thead>
+          <tbody id="p-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-categories" hidden>
+      <div class="tools">
+        <input id="c-new" placeholder="New category name" aria-label="New category name">
+        <button class="btn btn-primary" id="c-add">+ Add category</button>
+      </div>
+      <div class="card table-wrap">
+        <table class="list">
+          <thead><tr><th>Category name</th><th>Products</th><th>Order</th><th></th></tr></thead>
+          <tbody id="c-rows"></tbody>
+        </table>
+      </div>
+      <p class="muted">A category can be deleted only when it has no products. The order here is the order shown on the site.</p>
+    </section>
+
+    <section id="tab-company" hidden>
+      <form class="card form" id="company-form" onsubmit="return false"></form>
+      <p class="muted">Fields left empty are hidden on the site.</p>
+    </section>
+  </div>
+</div>
+
+<dialog id="p-dialog">
+  <form class="form" id="p-form">
+    <h2 class="full" id="p-title">Product</h2>
+    <label class="full">Product name *<input name="name" required maxlength="200"></label>
+    <label>Category *<select name="cat" required></select></label>
+    <label class="check"><input type="checkbox" name="rx"> Prescription medicine (Rx)</label>
+    <label>Price (INR)<input name="price" placeholder="e.g. 250" maxlength="20"></label>
+    <label>Per unit<input name="unit" placeholder="Strip, Box, Vial..." maxlength="30"></label>
+    <label>Composition<input name="composition" maxlength="300"></label>
+    <label>Strength<input name="strength" maxlength="100"></label>
+    <label>Form<input name="form" placeholder="Tablet, Capsule..." maxlength="60"></label>
+    <label>Pack size<input name="pack" maxlength="100"></label>
+    <label>Brand<input name="brand" maxlength="100"></label>
+    <label>Manufacturer<input name="manufacturer" maxlength="150"></label>
+    <label class="full">Photo (optional)<input name="image" placeholder="assets/img/product.jpg or https://..." maxlength="300"></label>
+    <div class="full actions">
+      <button class="btn btn-primary" type="submit">Done</button>
+      <button class="btn btn-light" type="button" id="p-cancel">Cancel</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="r-dialog">
+  <form class="form" id="r-form">
+    <h2 class="full" id="r-title">Review</h2>
+    <label>Customer name *<input name="name" required maxlength="100"></label>
+    <label>Rating<select name="rating">
+      <option value="5">5 stars</option><option value="4">4 stars</option><option value="3">3 stars</option>
+      <option value="2">2 stars</option><option value="1">1 star</option></select></label>
+    <label>Company<input name="company" maxlength="150"></label>
+    <label>Country<input name="country" maxlength="80"></label>
+    <label class="full">Review text *<textarea name="text" rows="5" required maxlength="1500"></textarea></label>
+    <label>Date (optional)<input name="date" placeholder="e.g. March 2026" maxlength="20"></label>
+    <div class="full actions">
+      <button class="btn btn-primary" type="submit">Done</button>
+      <button class="btn btn-light" type="button" id="r-cancel">Cancel</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="../assets/data.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>
