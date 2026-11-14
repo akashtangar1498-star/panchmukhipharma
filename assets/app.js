@@ -96,6 +96,9 @@
         '</h3><span class="muted">' + n + ' product' + (n === 1 ? "" : "s") + ' &rarr;</span></a>';
     }).join("");
     $("home-products").innerHTML = S.products.slice(0, 8).map(productCard).join("");
+    // "Why choose us" counts come from the real catalogue, rounded down
+    if (S.products.length >= 20) $("why-products").textContent = (Math.floor(S.products.length / 10) * 10) + "+";
+    if (S.categories.length >= 5) $("why-cats").textContent = (Math.floor(S.categories.length / 5) * 5) + "+";
     var T = S.testimonials || [];
     // Preview only: open index.html?sample=reviews to see how the section looks before real reviews exist.
     if (!T.length && params.get("sample") === "reviews") {

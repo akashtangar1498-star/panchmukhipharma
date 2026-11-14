@@ -113,6 +113,15 @@ input:focus, textarea:focus { outline: 2px solid var(--teal); outline-offset: 1p
 .copyright { padding-bottom: 20px; font-size: .82rem; }
 
 .grid-cats { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.grid.grid-why { grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+.why { padding: 20px; border-top: 4px solid var(--teal); }
+.why h3 { font-size: 1.05rem; }
+.why p { margin: 0; color: var(--muted); font-size: .95rem; }
+.steps { list-style: none; margin: 0; padding: 0; counter-reset: step; display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
+.steps li { counter-increment: step; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+.steps li::before { content: counter(step); display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--navy); color: #fff; font-weight: 700; margin-bottom: 12px; }
+.steps h3 { font-size: 1.02rem; }
+.steps p { margin: 0; color: var(--muted); font-size: .93rem; }
 .grid.grid-reviews { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
 .review { margin: 0; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
 .review blockquote { margin: 0; flex: 1; overflow-wrap: anywhere; }
