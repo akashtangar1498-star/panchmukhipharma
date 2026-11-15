@@ -91,6 +91,20 @@ if ($action === 'logout') {
     out(['ok' => true]);
 }
 
+if ($action === 'upload') {
+    if (!$loggedIn) out(['error' => 'Please log in again.'], 401);
+    $path = str($body['path'] ?? '', 200);
+    if (!preg_match('~^assets/img/[a-z0-9-]{1,120}\.jpg$~', $path)) out(['error' => 'Invalid photo name.'], 400);
+    $data = is_string($body['data'] ?? null) ? base64_decode($body['data'], true) : false;
+    if ($data === false || strlen($data) > 3000000) out(['error' => 'The photo is too large.'], 400);
+    $info = @getimagesizefromstring($data);
+    if (!$info || $info[2] !== IMAGETYPE_JPEG) out(['error' => 'The photo is not a valid JPEG image.'], 400);
+    $dir = __DIR__ . '/../assets/img';
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true)) out(['error' => 'Cannot create the assets/img folder.'], 500);
+    if (file_put_contents(__DIR__ . '/../' . $path, $data, LOCK_EX) === false) out(['error' => 'Cannot write to the assets/img folder.'], 500);
+    out(['ok' => true]);
+}
+
 if ($action === 'save') {
     if (!$loggedIn) out(['error' => 'Please log in again.'], 401);
 

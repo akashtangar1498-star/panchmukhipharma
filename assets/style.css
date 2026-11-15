@@ -60,7 +60,7 @@ section { padding: clamp(28px, 5vw, 56px) 0; }
 
 .product { overflow: hidden; display: flex; flex-direction: column; }
 .product-media { position: relative; aspect-ratio: 4 / 3; background: #e6f1f1; display: grid; place-items: center; }
-.product-media img { width: 100%; height: 100%; object-fit: cover; }
+.product-media img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
 .ph { color: var(--teal); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .55; }
 .rx { position: absolute; top: 10px; right: 10px; background: #b3261e; color: #fff; font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
 .product-body { padding: 16px; display: flex; flex-direction: column; flex: 1; }

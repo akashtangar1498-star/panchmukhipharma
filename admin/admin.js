@@ -48,12 +48,12 @@
     for (var i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
     return btoa(s);
   }
-  async function ghPut(file, text, message) {
+  async function ghPut(file, text, message, isBase64) {
     for (var attempt = 0; attempt < 2; attempt++) {
       var sha = null, r = await ghFetch(gh, "contents/" + file + "?ref=" + encodeURIComponent(gh.branch), { headers: { "Accept": "application/vnd.github.object+json" } });
       if (r.ok) sha = (await r.json()).sha;
       else if (r.status !== 404) throw ghError(r);
-      var body = { message: message, content: b64(text), branch: gh.branch };
+      var body = { message: message, content: isBase64 ? text : b64(text), branch: gh.branch };
       if (sha) body.sha = sha;
       r = await ghFetch(gh, "contents/" + file, { method: "PUT", body: JSON.stringify(body) });
       if (r.ok) return;
@@ -116,7 +116,64 @@
     TEXT_FIELDS.forEach(function (k) { f[k].value = p[k] || ""; });
     f.cat.value = p.cat;
     f.rx.checked = !!p.rx;
+    $("p-file").value = "";
+    showPreview();
     $("p-dialog").showModal();
+  }
+
+  /* ---- product photos: chosen in the form, uploaded only when Save is pressed ---- */
+  var pendingImages = {};   // path -> base64 JPEG waiting to be uploaded
+  var previews = {};        // path -> data URL, so a new photo shows before the site has rebuilt
+  function showPreview() {
+    var v = $("p-form").image.value.trim(), img = $("p-preview");
+    img.hidden = !v;
+    $("p-noimg").hidden = !v;
+    if (v) img.src = previews[v] || (/^https:\/\//.test(v) ? v : "../" + v);
+  }
+  function shrink(file) {   // resize to at most 900px and re-encode as JPEG
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file), im = new Image();
+      im.onload = function () {
+        var k = Math.min(1, 900 / Math.max(im.naturalWidth, im.naturalHeight));
+        var c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(im.naturalWidth * k));
+        c.height = Math.max(1, Math.round(im.naturalHeight * k));
+        var g = c.getContext("2d");
+        g.fillStyle = "#fff";
+        g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(im, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        resolve(c.toDataURL("image/jpeg", 0.85));
+      };
+      im.onerror = function () { URL.revokeObjectURL(url); reject(new Error("not an image")); };
+      im.src = url;
+    });
+  }
+  $("p-file").addEventListener("change", async function (e) {
+    var file = e.target.files[0], f = $("p-form");
+    if (!file) return;
+    if (!online && !gh) { alert("Connect GitHub first (yellow box at the top). Photos are uploaded through that connection."); e.target.value = ""; return; }
+    try {
+      var dataUrl = await shrink(file);
+      var base = f.name.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "product";
+      var path = "assets/img/" + base + "-" + Date.now().toString(36) + ".jpg";
+      pendingImages[path] = dataUrl.split(",")[1];
+      previews[path] = dataUrl;
+      f.image.value = path;
+      showPreview();
+    } catch (err) { alert("That file could not be read as an image. Use a JPG or PNG photo."); e.target.value = ""; }
+  });
+  $("p-noimg").addEventListener("click", function () { $("p-form").image.value = ""; $("p-file").value = ""; showPreview(); });
+  $("p-form").image.addEventListener("input", showPreview);
+  // Uploads photos that are still used by a product; called right before the data is saved.
+  async function uploadPendingImages() {
+    var paths = Object.keys(pendingImages).filter(function (p) { return D.products.some(function (x) { return x.image === p; }); });
+    for (var i = 0; i < paths.length; i++) {
+      $("status").textContent = "Uploading photo " + (i + 1) + " of " + paths.length + "...";
+      if (online) await call("upload", { path: paths[i], data: pendingImages[paths[i]] });
+      else await ghPut(paths[i], pendingImages[paths[i]], "Add product photo", true);
+      delete pendingImages[paths[i]];
+    }
   }
   $("p-form").addEventListener("submit", function (e) {
     e.preventDefault();
@@ -272,6 +329,8 @@
       $("save").disabled = true;
       $("status").textContent = "Publishing...";
       try {
+        await uploadPendingImages();
+        $("status").textContent = "Publishing...";
         await ghPut("assets/data.js", "window.SITE = " + JSON.stringify(D, null, 1) + ";\n", "Update site content from dashboard");
         setDirty(false, "Published at " + new Date().toLocaleTimeString() + ". The live site updates in a few minutes.");
       } catch (err) {
@@ -287,6 +346,7 @@
     $("save").disabled = true;
     $("status").textContent = "Saving...";
     try {
+      await uploadPendingImages();
       await call("save", D);
       setDirty(false, "Saved to website at " + new Date().toLocaleTimeString());
     } catch (err) {

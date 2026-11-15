@@ -117,7 +117,14 @@
     <label>Pack size<input name="pack" maxlength="100"></label>
     <label>Brand<input name="brand" maxlength="100"></label>
     <label>Manufacturer<input name="manufacturer" maxlength="150"></label>
-    <label class="full">Photo (optional)<input name="image" placeholder="assets/img/product.jpg or https://..." maxlength="300"></label>
+    <div class="full photo-field">
+      <img id="p-preview" alt="Product photo preview" hidden>
+      <div class="photo-inputs">
+        <label>Product photo (optional)<input type="file" id="p-file" accept="image/*"></label>
+        <label>or paste an image link<input name="image" placeholder="https://..." maxlength="300"></label>
+        <button class="btn btn-small btn-danger" type="button" id="p-noimg" hidden>Remove photo</button>
+      </div>
+    </div>
     <div class="full actions">
       <button class="btn btn-primary" type="submit">Done</button>
       <button class="btn btn-light" type="button" id="p-cancel">Cancel</button>

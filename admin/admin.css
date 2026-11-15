@@ -38,6 +38,10 @@ dialog h2 { margin: 0; }
 .form select { width: 100%; }
 label.check { display: flex !important; align-items: center; gap: 8px; align-self: end; padding-bottom: 10px; }
 label.check input { width: auto; }
+.photo-field { display: flex; gap: 14px; align-items: flex-start; }
+.photo-field img { width: 110px; height: 110px; object-fit: contain; background: #fff; border: 1px solid var(--line); border-radius: 10px; flex: none; }
+.photo-inputs { flex: 1; display: grid; gap: 10px; min-width: 0; }
+.photo-inputs .btn { justify-self: start; }
 
 @media (max-width: 640px) {
   #tab-reviews .list th:nth-child(3), #tab-reviews .list td:nth-child(3) { display: none; }
